@@ -1,0 +1,13 @@
+{
+   "broker" : "localhost",
+   "brokerauth" : "1",
+   "brokerpassword" : "",
+   "brokerport" : "1883",
+   "brokeruser" : "",
+   "password" : "",
+   "topic" : "labcom",
+   "usemqttgateway" : "false",
+   "user" : "",
+   "token" : "",
+   "accountid" : "0"
+}
