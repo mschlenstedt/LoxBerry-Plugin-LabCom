@@ -1,2 +1,2 @@
-# LoxBerry-Plugin-PoolLab
-LoxBerry Plugin for PoolLab Measurements
+# LoxBerry-Plugin-LabCom
+LoxBerry Plugin for PoolLab/LabCom Measurements
