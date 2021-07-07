@@ -1,7 +1,7 @@
 <!-- SecurePIN --> 
 <div id="securepin_block" style="margin: 0 auto; width:350px; display:none">
 	<TMPL_VAR SECUREPIN.ENTER_SECUREPIN>
-	<input name="securepin" id="securepin" type="text" onkeypress="return AddKeyPress(event, $('#check_securepin'));">
+	<input name="securepin" id="securepin" type="text">
 	<button class="ui-btn ui-btn-icon-right ui-corner-all" id="check_securepin" data-inline="true"><TMPL_VAR COMMON.BUTTON_OK></button>
 	
 	<div class="hint" id="check_hint" style="padding: 5px 5px 5px 5px;"></div>
@@ -75,7 +75,7 @@
 		<div class="lb_flex-container LABCOM ui-state-disabled">
 			<div	class="lb_flex-item-label">
 				<label	class=	"control-label"
-					for="Token"><TMPL_VAR LABCOM.LABEL_TOKEN></label>
+					for="token"><TMPL_VAR LABCOM.LABEL_TOKEN></label>
 			</div>
 			<div	class="lb_flex-item-spacer"></div>
 			<div	class="lb_flex-item">
@@ -111,8 +111,10 @@
 			</div>
 			<div	class="lb_flex-item-spacer"></div>
 			<div	class="lb_flex-item">
-			<a href="javascript:saveLABCOM();" id="btnsavelabcom" class="ui-btn ui-corner-all ui-shadow ui-btn-b ui-btn-icon-left ui-icon-check" 
-						data-transition="flow"><TMPL_VAR LABCOM.BUTTON_SAVE></a>
+			<a href="javascript:saveLABCOM();" id="btnsavelabcom" class="ui-btn ui-corner-all ui-shadow ui-btn-b ui-btn-icon-left ui-icon-check ui-btn-inline" 
+					data-transition="flow" data-inline="true"><TMPL_VAR LABCOM.BUTTON_SAVE></a>
+			<a href="javascript:testLABCOM();" id="btntestlabcom" class="ui-btn ui-corner-all ui-shadow ui-btn-b ui-btn-icon-left ui-icon-action ui-btn-inline" 
+					data-transition="flow" data-inline="true"><TMPL_VAR LABCOM.BUTTON_TEST></a>
 			<div class="hint" id="labcom_hint">&nbsp;</div>
 			</div>
 			<div	class="lb_flex-item-spacer"></div>
@@ -133,12 +135,6 @@
 
 	<div id="main" style="visibility:hidden"> <!-- style="display:none;" --> 
 
-		<div style="display:flex;align-items:center;justify-content:center;font-size:11px;">
-			<TMPL_VAR COMMON.HINT_STATE> &nbsp; <span id="getstate_hint"><TMPL_VAR COMMON.HINT_UNKNOWN_STATE></span>
-		</div>
-
-		<br><br>
-		
 		<form>
 		
 		<div class="lb_flex-container MQTT ui-state-disabled">
@@ -297,7 +293,7 @@
 <script>
 // Main form
 var formmqtt = '<TMPL_VAR FORM_MQTT>';
-var formilabcom = '<TMPL_VAR FORM_LABCOM>';
+var formlabcom = '<TMPL_VAR FORM_LABCOM>';
 var formlog = '<TMPL_VAR FORM_LOG>';
 
 var secpin = null;
@@ -315,9 +311,6 @@ $(function() {
 
 	getconfig();
 	
-	setInterval(function(){ running_state(); }, 5000);
-	running_state();
-
 	// Check SecurePIN by ajax and load form data
 	$("#check_securepin").click(function(){
 		console.log("Check securepin called");
@@ -396,6 +389,12 @@ function saveLABCOM() {
 	});
 }
 
+// Test LABCOM Settings
+function testLABCOM() {
+	console.log ("Testing", $('#token').val(), $('#accountid').val());
+	window.open("./test.cgi?token=" + $('#token').val() + "&account=" + $('#accountid').val() );
+}
+
 // SecurePIN
 function checkSecurePIN() {
 	console.log("Checking SecurePin");
@@ -445,7 +444,7 @@ function securePINwrong() {
 function getconfig() {
 	// Get Config
 	
-	if ( formilabcom ) {
+	if ( formlabcom ) {
 		console.log( "Get Config for LabCom form" );
 		var form = 'config'; // This will be changed to config.json later on in CGI
 	}
@@ -523,15 +522,15 @@ function getconfig() {
 				if ( data.error || jQuery.isEmptyObject(data)) {
 					console.log("config.json is empty, does not exist or is invalid.");
 				}
-				if(data.user) {
+				if(data.token) {
 					$("#token").val(data.token);
 				} else {
 					$("#token").val('');
 				}
-				if(data.password) {
+				if(data.accountid) {
 					$("#accountid").val(data.accountid);
 				} else {
-					$("#accountid").val('');
+					$("#accountid").val('0');
 				}
 				$(".LABCOM").removeClass("ui-state-disabled");
 			};
