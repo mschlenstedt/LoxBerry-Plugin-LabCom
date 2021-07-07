@@ -392,7 +392,24 @@ function saveLABCOM() {
 // Test LABCOM Settings
 function testLABCOM() {
 	console.log ("Testing", $('#token').val(), $('#accountid').val());
-	window.open("./test.cgi?token=" + $('#token').val() + "&account=" + $('#accountid').val() );
+	$.ajax( { 
+			type: 'POST',
+			data: { 
+				ajax: 'testlabcom', 
+				token: $('#token').val(),
+				accountid: $('#accountid').val()
+			}
+		} )
+	.fail(function( data ) {
+		console.log( "savelabcom Fail", data );
+	})
+	.done(function( data ) {
+		console.log( "savelabcom Success: ", data );
+		window.open("/admin/system/tools/logfile.cgi?logfile=plugins/REPLACELBPPLUGINDIR/test.log&header=html&format=template&only=once");
+	})
+	.always(function( data ) {
+		console.log( "savelabcom Finished" );
+	});
 }
 
 // SecurePIN
