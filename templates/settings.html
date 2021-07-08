@@ -392,12 +392,14 @@ function saveLABCOM() {
 // Test LABCOM Settings
 function testLABCOM() {
 	console.log ("Testing", $('#token').val(), $('#accountid').val());
+	$("#labcom_hint").attr("style", "color:blue").html("<TMPL_VAR LABCOM.HINT_TEST_WAIT>");
 	$.ajax( { 
 			type: 'POST',
 			data: { 
 				ajax: 'testlabcom', 
 				token: $('#token').val(),
-				accountid: $('#accountid').val()
+				accountid: $('#accountid').val(),
+				secpin: secpin
 			}
 		} )
 	.fail(function( data ) {
@@ -405,7 +407,8 @@ function testLABCOM() {
 	})
 	.done(function( data ) {
 		console.log( "savelabcom Success: ", data );
-		window.open("/admin/system/tools/logfile.cgi?logfile=plugins/REPLACELBPPLUGINDIR/test.log&header=html&format=template&only=once");
+		window.open("/admin/system/tools/logfile.cgi?logfile=plugins/labcom/test.log&header=html&format=template&only=once");
+		$("#labcom_hint").html("");
 	})
 	.always(function( data ) {
 		console.log( "savelabcom Finished" );

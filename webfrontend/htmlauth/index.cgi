@@ -148,6 +148,14 @@ if( $q->{ajax} ) {
 		print JSON->new->canonical(1)->encode(\%response) if !$content;
 	}
 	
+	# Test LabCom Settings
+	if( $q->{ajax} eq "testlabcom" ) {
+		LOGINF "P$$ testlabcom: testlabcom was called.";
+		$response{error} = 0;
+		system("$lbpbindir/labcomgrabber.pl --logfile=test.log --verbose --test --token=$q->{'token'} --account=$q->{'account'} > /dev/null 2>&1");
+		print JSON->new->canonical(1)->encode(\%response);
+	}
+	
 	exit;
 
 ##########################################################################

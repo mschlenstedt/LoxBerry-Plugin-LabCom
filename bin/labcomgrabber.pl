@@ -28,7 +28,7 @@ use LoxBerry::System;
 use LoxBerry::Log;
 use LoxBerry::JSON;
 use LWP::UserAgent;
-use CGI;
+use Getopt::Long;
 use Data::Dumper;
 use Net::MQTT::Simple;
 use experimental 'smartmatch';
@@ -44,20 +44,39 @@ my $version = LoxBerry::System::pluginversion();
 my $url = "https://labcom.cloud/graphql";
 my $account;
 my $token;
+my $logfile;
+my $test;
+my $verbose;
 my $accountfilter;
 
-# Create a logging object
-my $log = LoxBerry::Log->new ( 	
-	package => 'labcom',
-	name => 'labcomgrabber',
-	logdir => "$lbplogdir",
-);
-
 # Commandline options
-my $cgi = CGI->new;
-my $q = $cgi->Vars;
+# CGI doesn't work from other CGI skripts... :-(
+#my $cgi = CGI->new;
+#my $q = $cgi->Vars;
+GetOptions ('verbose' => \$verbose,
+            'token=s' => \$token,
+            'account=s' => \$account,
+            'logfile=s' => \$logfile,
+            'test' => \$test);
 
-if ($q->{'verbose'}) {
+# Create a logging object
+my $log;
+if ( $logfile ) {
+	my $fulllogfile = "$lbplogdir" . "/" . $logfile;
+	$log = LoxBerry::Log->new ( 	
+		package => 'labcom',
+		name => 'labcomgrabber',
+		filename => "$fulllogfile",
+	);
+} else {
+	$log = LoxBerry::Log->new ( 	
+		package => 'labcom',
+		name => 'labcomgrabber',
+		logdir => "$lbplogdir",
+	);
+}
+
+if ($verbose || $test) {
 	$log->stdout(1);
 	$log->loglevel(7);
 }
@@ -68,7 +87,6 @@ LOGDEB "This is $0 Version $version";
 # Read config
 my $jsoncfg = LoxBerry::JSON->new();
 my $cfg = $jsoncfg->open(filename => "$lbpconfigdir/config.json");
-$token = $cfg->{'token'};
 $accountfilter = "(id: [$cfg->{'accountid'}])";
 
 # Read tmp memory file
@@ -76,18 +94,21 @@ my $jsonmem = LoxBerry::JSON->new();
 my $mem = $jsonmem->open(filename => "/dev/shm/labcom_mem.json", writeonclose => 1);
 
 # Commandline options
-if ($q->{'token'}) {
-	$token = $q->{'token'};
+if (!$token) {
+	$token = $cfg->{'token'};
 }
 if (!$token) {
 	LOGCRIT "Token missing";
 	exit 2;
 }
 
-if ($q->{'account'} && $q->{'account'} != "0") {
-	$accountfilter = "(id: [$q->{'account'}])";
+if (!$account) {
+	$account = $cfg->{'accountid'};
+}
+if ($account) {
+	$accountfilter = "(id: [$account])";
 } else {
-	$q->{'account'} = "0";
+	$account = "0";
 	$accountfilter = "";
 }
 
@@ -118,8 +139,9 @@ if ($urlstatuscode ne "200") {
 my $json = decode_json( $raw );
 
 # If in Test mode
-if ($q->{'test'}) {
-	print Dumper $json;
+if ($test) {
+	LOGDEB "Received data:";
+	LOGDEB "$raw";
 	exit;
 }
 
@@ -128,10 +150,7 @@ my $mqtt;
 
 # Allow unencrypted connection with credentials
 $ENV{MQTT_SIMPLE_ALLOW_INSECURE_LOGIN} = 1;
-
-if ( is_disabled($cfg->{'usemqttgateway'}) ) {
-	$cfg->{'brokerport'} = "1883" if !$cfg->{'brokerport'};
-}
+$cfg->{'brokerport'} = "1883" if !$cfg->{'brokerport'};
 
 # Connect to MQTT Broker
 LOGDEB "Connect to MQTT Broker";
@@ -185,12 +204,12 @@ foreach my $account ( @{$json->{data}->{'CloudAccount'}->{'Accounts'}} ) {
 	}
 	
 }
+$mqtt->disconnect();
 
 exit;
 
 
 
 END {
-	$mqtt->disconnect();
 	LOGEND;
 }
