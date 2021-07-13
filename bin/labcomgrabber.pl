@@ -177,7 +177,7 @@ foreach my $account ( @{$json->{data}->{'CloudAccount'}->{'Accounts'}} ) {
 		my $scenario = $measurement->{'scenario'};
 		LOGDEB "--> Found Measurement $scenario";
 		if ( $mem->{"$accountname"}->{"$scenario"} ) {
-			if ( $mem->{"$accountname"}->{"$scenario"} >= $measurement->{'timestamp'} ) {
+			if ( $mem->{"$accountname"}->{"$scenario"} == $measurement->{'timestamp'} ) {
 				LOGDEB "Existing measurement from $mem->{$accountname}->{$scenario} is newer or equal than found measurement ($measurement->{'timestamp'})";
 				next;
 			} else {
