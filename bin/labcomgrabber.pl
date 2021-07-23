@@ -175,31 +175,32 @@ foreach my $account ( @{$json->{data}->{'CloudAccount'}->{'Accounts'}} ) {
 	foreach my $measurement ( @{$account->{'Measurements'}} ) {
 		my $send;
 		my $scenario = $measurement->{'scenario'};
-		LOGDEB "--> Found Measurement $scenario";
-		if ( $mem->{"$accountname"}->{"$scenario"} ) {
-			if ( $mem->{"$accountname"}->{"$scenario"} == $measurement->{'timestamp'} ) {
-				LOGDEB "Existing measurement from $mem->{$accountname}->{$scenario} is newer or equal than found measurement ($measurement->{'timestamp'})";
+		my $parameter = $measurement->{'parameter'};
+		LOGDEB "--> Found Measurement $scenario/$parameter";
+		if ( $mem->{"$accountname"}->{"$scenario"}->{"$parameter"} ) {
+			if ( $mem->{"$accountname"}->{"$scenario"}->{"$parameter"} == $measurement->{'timestamp'} ) {
+				LOGDEB "Existing measurement from $mem->{$accountname}->{$scenario}->{$parameter} is newer or equal than found measurement ($measurement->{'timestamp'})";
 				next;
 			} else {
 				LOGDEB "Measurement is newer than existing one. Send data to broker.";
 				$send =1;
 			}
 		} else {
-			LOGDEB "New Measurement found. Send datai to broker.";
-			$mem->{"$accountname"}->{"$scenario"} = $measurement->{'timestamp'};
+			LOGDEB "New Measurement found. Send data to broker.";
+			$mem->{"$accountname"}->{"$scenario"}->{"$parameter"} = $measurement->{'timestamp'};
 			$send =1;
 		}
 		if ($send) {
 			$mem->{"$accountname"}->{"$scenario"} = $measurement->{'timestamp'};
-			$mqtt->retain("$cfg->{'topic'}" . "/" . $accountname . "/" . $scenario . "/scenario", "$measurement->{'scenario'}");
-			$mqtt->retain("$cfg->{'topic'}" . "/" . $accountname . "/" . $scenario . "/parameter", "$measurement->{'parameter'}");
-			$mqtt->retain("$cfg->{'topic'}" . "/" . $accountname . "/" . $scenario . "/timestamp", "$measurement->{'timestamp'}");
-			$mqtt->retain("$cfg->{'topic'}" . "/" . $accountname . "/" . $scenario . "/value", "$measurement->{'value'}");
-			$mqtt->retain("$cfg->{'topic'}" . "/" . $accountname . "/" . $scenario . "/device_serial", "$measurement->{'device_serial'}");
-			$mqtt->retain("$cfg->{'topic'}" . "/" . $accountname . "/" . $scenario . "/unit", "$measurement->{'unit'}");
-			$mqtt->retain("$cfg->{'topic'}" . "/" . $accountname . "/" . $scenario . "/operator_name", "$measurement->{'operator_name'}");
-			$mqtt->retain("$cfg->{'topic'}" . "/" . $accountname . "/" . $scenario . "/ideal_low", "$measurement->{'ideal_low'}");
-			$mqtt->retain("$cfg->{'topic'}" . "/" . $accountname . "/" . $scenario . "/ideal_high", "$measurement->{'ideal_high'}");
+			$mqtt->retain("$cfg->{'topic'}" . "/" . $accountname . "/" . $scenario . "/" . $parameter . "/scenario", "$measurement->{'scenario'}");
+			$mqtt->retain("$cfg->{'topic'}" . "/" . $accountname . "/" . $scenario . "/" . $parameter . "/parameter", "$measurement->{'parameter'}");
+			$mqtt->retain("$cfg->{'topic'}" . "/" . $accountname . "/" . $scenario . "/" . $parameter . "/timestamp", "$measurement->{'timestamp'}");
+			$mqtt->retain("$cfg->{'topic'}" . "/" . $accountname . "/" . $scenario . "/" . $parameter . "/value", "$measurement->{'value'}");
+			$mqtt->retain("$cfg->{'topic'}" . "/" . $accountname . "/" . $scenario . "/" . $parameter . "/device_serial", "$measurement->{'device_serial'}");
+			$mqtt->retain("$cfg->{'topic'}" . "/" . $accountname . "/" . $scenario . "/" . $parameter . "/unit", "$measurement->{'unit'}");
+			$mqtt->retain("$cfg->{'topic'}" . "/" . $accountname . "/" . $scenario . "/" . $parameter . "/operator_name", "$measurement->{'operator_name'}");
+			$mqtt->retain("$cfg->{'topic'}" . "/" . $accountname . "/" . $scenario . "/" . $parameter . "/ideal_low", "$measurement->{'ideal_low'}");
+			$mqtt->retain("$cfg->{'topic'}" . "/" . $accountname . "/" . $scenario . "/" . $parameter . "/ideal_high", "$measurement->{'ideal_high'}");
 		}
 	}
 	
