@@ -258,7 +258,7 @@ sub form_print
 	$navbar{99}{active} = 1 if $q->{form} eq "log";
 	
 	# Template
-	LoxBerry::Web::lbheader($L{'COMMON.LABEL_PLUGINTITLE'} . " V$version", "https://www.loxwiki.eu/x/CIGzB", "");
+	LoxBerry::Web::lbheader($L{'COMMON.LABEL_PLUGINTITLE'} . " V$version", "https://www.loxwiki.eu/x/94pWBQ", "");
 	print $template->output();
 	LoxBerry::Web::lbfooter();
 	
