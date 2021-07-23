@@ -175,7 +175,9 @@ foreach my $account ( @{$json->{data}->{'CloudAccount'}->{'Accounts'}} ) {
 	foreach my $measurement ( @{$account->{'Measurements'}} ) {
 		my $send;
 		my $scenario = $measurement->{'scenario'};
+		$scenario =~ s/\s+/_/g;
 		my $parameter = $measurement->{'parameter'};
+		$parameter =~ s/\s+/_/g;
 		LOGDEB "--> Found Measurement $scenario/$parameter";
 		if ( $mem->{"$accountname"}->{"$scenario"}->{"$parameter"} ) {
 			if ( $mem->{"$accountname"}->{"$scenario"}->{"$parameter"} == $measurement->{'timestamp'} ) {
@@ -191,7 +193,7 @@ foreach my $account ( @{$json->{data}->{'CloudAccount'}->{'Accounts'}} ) {
 			$send =1;
 		}
 		if ($send) {
-			$mem->{"$accountname"}->{"$scenario"} = $measurement->{'timestamp'};
+			$mem->{"$accountname"}->{"$scenario"}->{"$parameter"} = $measurement->{'timestamp'};
 			$mqtt->retain("$cfg->{'topic'}" . "/" . $accountname . "/" . $scenario . "/" . $parameter . "/scenario", "$measurement->{'scenario'}");
 			$mqtt->retain("$cfg->{'topic'}" . "/" . $accountname . "/" . $scenario . "/" . $parameter . "/parameter", "$measurement->{'parameter'}");
 			$mqtt->retain("$cfg->{'topic'}" . "/" . $accountname . "/" . $scenario . "/" . $parameter . "/timestamp", "$measurement->{'timestamp'}");
