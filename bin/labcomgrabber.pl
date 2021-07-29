@@ -133,6 +133,8 @@ if ($urlstatuscode ne "200") {
 	exit 2;
 } else {
 	LOGOK "Data fetched successfully from $url";
+	LOGDEB "Received data (raw) is:";
+	LOGDEB "$raw";
 }
 
 # Decode JSON response from server
@@ -154,7 +156,12 @@ $cfg->{'brokerport'} = "1883" if !$cfg->{'brokerport'};
 
 # Connect to MQTT Broker
 LOGDEB "Connect to MQTT Broker";
-$mqtt = Net::MQTT::Simple->new( "$cfg->{'broker'}:$cfg->{'brokerport'}");
+if ($cfg->{'broker'} && $cfg->{'brokerport'}) {
+	$mqtt = Net::MQTT::Simple->new( "$cfg->{'broker'}:$cfg->{'brokerport'}");
+} else {
+	LOGERR "MQTT Broker seems not to be configured. Giving up.";
+	exit 2;
+}
 
 # Use Auth
 if( $cfg->{'brokeruser'} && $cfg->{'brokerpassword'} ) {
@@ -181,16 +188,15 @@ foreach my $account ( @{$json->{data}->{'CloudAccount'}->{'Accounts'}} ) {
 		LOGDEB "--> Found Measurement $scenario/$parameter";
 		if ( $mem->{"$accountname"}->{"$scenario"}->{"$parameter"} ) {
 			if ( $mem->{"$accountname"}->{"$scenario"}->{"$parameter"} == $measurement->{'timestamp'} ) {
-				LOGDEB "Existing measurement from $mem->{$accountname}->{$scenario}->{$parameter} is newer or equal than found measurement ($measurement->{'timestamp'})";
+				LOGDEB "Existing measurement from $mem->{"$accountname"}->{"$scenario"}->{"$parameter"} is newer or equal than found measurement ($measurement->{'timestamp'})";
 				next;
 			} else {
 				LOGDEB "Measurement is newer than existing one. Send data to broker.";
-				$send =1;
+				$send = 1;
 			}
 		} else {
 			LOGDEB "New Measurement found. Send data to broker.";
-			$mem->{"$accountname"}->{"$scenario"}->{"$parameter"} = $measurement->{'timestamp'};
-			$send =1;
+			$send = 1;
 		}
 		if ($send) {
 			$mem->{"$accountname"}->{"$scenario"}->{"$parameter"} = $measurement->{'timestamp'};
