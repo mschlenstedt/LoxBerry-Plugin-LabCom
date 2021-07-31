@@ -187,11 +187,11 @@ foreach my $account ( @{$json->{data}->{'CloudAccount'}->{'Accounts'}} ) {
 		$parameter =~ s/\s+/_/g;
 		LOGDEB "--> Found Measurement $scenario/$parameter";
 		if ( $mem->{"$accountname"}->{"$scenario"}->{"$parameter"} ) {
-			if ( $mem->{"$accountname"}->{"$scenario"}->{"$parameter"} == $measurement->{'timestamp'} ) {
-				LOGDEB "Existing measurement from $mem->{"$accountname"}->{"$scenario"}->{"$parameter"} is newer or equal than found measurement ($measurement->{'timestamp'})";
+			if ( $mem->{"$accountname"}->{"$scenario"}->{"$parameter"} > $measurement->{'timestamp'} ) {
+				LOGDEB "Existing measurement from $mem->{"$accountname"}->{"$scenario"}->{"$parameter"} is newer than found measurement ($measurement->{'timestamp'})";
 				next;
 			} else {
-				LOGDEB "Measurement is newer than existing one. Send data to broker.";
+				LOGDEB "Measurement is newer or equal than existing one. Send data to broker.";
 				$send = 1;
 			}
 		} else {
