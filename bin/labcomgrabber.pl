@@ -31,6 +31,7 @@ use LWP::UserAgent;
 use Getopt::Long;
 use Data::Dumper;
 use Net::MQTT::Simple;
+use Time::HiRes qw ( sleep );
 use experimental 'smartmatch';
 
 ##########################################################################
@@ -47,7 +48,10 @@ my $token;
 my $logfile;
 my $test;
 my $verbose;
+my $force;
 my $accountfilter;
+my $lasttimestamp;
+my $received;
 
 # Commandline options
 # CGI doesn't work from other CGI skripts... :-(
@@ -57,7 +61,8 @@ GetOptions ('verbose' => \$verbose,
             'token=s' => \$token,
             'account=s' => \$account,
             'logfile=s' => \$logfile,
-            'test' => \$test);
+            'test' => \$test,
+            'force' => \$force);
 
 # Create a logging object
 my $log;
@@ -76,7 +81,7 @@ if ( $logfile ) {
 	);
 }
 
-if ($verbose || $test) {
+if ($verbose || $test || $force) {
 	$log->stdout(1);
 	$log->loglevel(7);
 }
@@ -90,8 +95,8 @@ my $cfg = $jsoncfg->open(filename => "$lbpconfigdir/config.json");
 $accountfilter = "(id: [$cfg->{'accountid'}])";
 
 # Read tmp memory file
-my $jsonmem = LoxBerry::JSON->new();
-my $mem = $jsonmem->open(filename => "/dev/shm/labcom_mem.json", writeonclose => 1);
+#my $jsonmem = LoxBerry::JSON->new();
+#my $mem = $jsonmem->open(filename => "/dev/shm/labcom_mem.json", writeonclose => 1);
 
 # Commandline options
 if (!$token) {
@@ -119,9 +124,8 @@ my $ua = new LWP::UserAgent;
 my $resp = $ua->post(	$url,
        			'Content-Type' => 'application/json',
 			'Authorization' => "$token",
-		       	Content => $query
+		       	'Content' => $query
 	       	);
-
 my $raw = $resp->decoded_content();
 
 # Check status of request
@@ -155,7 +159,7 @@ $ENV{MQTT_SIMPLE_ALLOW_INSECURE_LOGIN} = 1;
 $cfg->{'brokerport'} = "1883" if !$cfg->{'brokerport'};
 
 # Connect to MQTT Broker
-LOGDEB "Connect to MQTT Broker";
+LOGDEB "Connecting to MQTT Broker...";
 if ($cfg->{'broker'} && $cfg->{'brokerport'}) {
 	$mqtt = Net::MQTT::Simple->new( "$cfg->{'broker'}:$cfg->{'brokerport'}");
 } else {
@@ -168,9 +172,31 @@ if( $cfg->{'brokeruser'} && $cfg->{'brokerpassword'} ) {
 	$mqtt->login($cfg->{'brokeruser'}, $cfg->{'brokerpassword'});
 }
 
+# Plugindata
+my $now = time;
+$mqtt->retain("$cfg->{'topic'}" . "/plugin/lastcall", "$now");
+$mqtt->retain("$cfg->{'topic'}" . "/plugin/lastcall_human", scalar(localtime($now)));
+
+# Check if account has changed since last run
+$received = "0";
+$lasttimestamp = "0";
+$mqtt->subscribe("$cfg->{'topic'}" . "/CloudAccount/last_change_time", \&received);
+for (my $i=0;$i<10;$i++) {
+	last if ($received);
+	$mqtt->tick();
+	sleep (0.1);
+}
+$mqtt->unsubscribe("$cfg->{'topic'}" . "/CloudAccount/last_change_time");
+if (!$force && $lasttimestamp && $lasttimestamp >= $json->{'data'}->{'CloudAccount'}->{'last_change_time'}) {
+	LOGINF "Your account data hasn't changed since last call. Nothing to do.";
+	$mqtt->disconnect();
+	exit;
+}
+
 # Parse Cloud Account data
 $mqtt->retain("$cfg->{'topic'}" . "/CloudAccount/last_change_time", $json->{'data'}->{'CloudAccount'}->{'last_change_time'});
 $mqtt->retain("$cfg->{'topic'}" . "/CloudAccount/email", $json->{'data'}->{'CloudAccount'}->{'email'});
+$mqtt->retain("$cfg->{'topic'}" . "/CloudAccount/last_change_time_human", scalar(localtime($json->{'data'}->{'CloudAccount'}->{'last_change_time'})));
 
 # Parse Accounts
 foreach my $account ( @{$json->{data}->{'CloudAccount'}->{'Accounts'}} ) {
@@ -181,28 +207,33 @@ foreach my $account ( @{$json->{data}->{'CloudAccount'}->{'Accounts'}} ) {
 	# Parse Measurements
 	foreach my $measurement ( @{$account->{'Measurements'}} ) {
 		my $send;
+		# Clean values for topic
 		my $scenario = $measurement->{'scenario'};
 		$scenario =~ s/\s+/_/g;
 		my $parameter = $measurement->{'parameter'};
 		$parameter =~ s/\s+/_/g;
 		LOGDEB "--> Found Measurement $scenario/$parameter";
-		if ( $mem->{"$accountname"}->{"$scenario"}->{"$parameter"} ) {
-			if ( $mem->{"$accountname"}->{"$scenario"}->{"$parameter"} > $measurement->{'timestamp'} ) {
-				LOGDEB "Existing measurement from $mem->{"$accountname"}->{"$scenario"}->{"$parameter"} is newer than found measurement ($measurement->{'timestamp'})";
-				next;
-			} else {
-				LOGDEB "Measurement is newer or equal than existing one. Send data to broker.";
-				$send = 1;
-			}
-		} else {
-			LOGDEB "New Measurement found. Send data to broker.";
-			$send = 1;
+
+		# Check if this measurement already exist in broker
+		$received = "0";
+		$lasttimestamp = "0";
+		$mqtt->subscribe("$cfg->{'topic'}" . "/" . $accountname . "/" . $scenario . "/" . $parameter . "/timestamp", \&received);
+		for (my $i=0;$i<10;$i++) {
+			last if ($received);
+			$mqtt->tick();
+			sleep (0.1);
 		}
-		if ($send) {
-			$mem->{"$accountname"}->{"$scenario"}->{"$parameter"} = $measurement->{'timestamp'};
+		$mqtt->unsubscribe("$cfg->{'topic'}" . "/" . $accountname . "/" . $scenario . "/" . $parameter . "/timestamp");
+		# Check if current measurement is newer than the one from the broker. Send to broker if newer or equal (caching is done in MQTT Gateway)
+		if ( $lasttimestamp && $lasttimestamp > $measurement->{'timestamp'} ) {
+			LOGDEB "Existing measurement from Timestamp $lasttimestamp is newer than found measurement form Timestamp $measurement->{'timestamp'}. Skipping.";
+			next;
+		} else {
+			LOGDEB "Found measurement from Timestamp $measurement->{'timestamp'} is newer (or equal) than existing measurement from Timestamp $lasttimestamp. Sending.";
 			$mqtt->retain("$cfg->{'topic'}" . "/" . $accountname . "/" . $scenario . "/" . $parameter . "/scenario", "$measurement->{'scenario'}");
 			$mqtt->retain("$cfg->{'topic'}" . "/" . $accountname . "/" . $scenario . "/" . $parameter . "/parameter", "$measurement->{'parameter'}");
 			$mqtt->retain("$cfg->{'topic'}" . "/" . $accountname . "/" . $scenario . "/" . $parameter . "/timestamp", "$measurement->{'timestamp'}");
+			$mqtt->retain("$cfg->{'topic'}" . "/" . $accountname . "/" . $scenario . "/" . $parameter . "/timestamp_human", scalar(localtime($measurement->{'timestamp'})));
 			$mqtt->retain("$cfg->{'topic'}" . "/" . $accountname . "/" . $scenario . "/" . $parameter . "/value", "$measurement->{'value'}");
 			$mqtt->retain("$cfg->{'topic'}" . "/" . $accountname . "/" . $scenario . "/" . $parameter . "/device_serial", "$measurement->{'device_serial'}");
 			$mqtt->retain("$cfg->{'topic'}" . "/" . $accountname . "/" . $scenario . "/" . $parameter . "/unit", "$measurement->{'unit'}");
@@ -213,12 +244,24 @@ foreach my $account ( @{$json->{data}->{'CloudAccount'}->{'Accounts'}} ) {
 	}
 	
 }
-$mqtt->disconnect();
 
+# Disconnect
+$mqtt->disconnect();
 exit;
 
+# Sub: Get value from Broker
+sub received
+{
+	$received = 1;
+	my ($topic, $message) = @_;
+	LOGDEB "--> Incoming message on topic $topic is: $message";
+    	if ($message) {
+    		$lasttimestamp = $message;
+	}
+}
 
-
+# Always close log
 END {
 	LOGEND;
 }
+
