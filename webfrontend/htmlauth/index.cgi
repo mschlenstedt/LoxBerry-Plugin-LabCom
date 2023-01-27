@@ -218,9 +218,9 @@ sub form_labcom
 sub form_mqtt
 {
 	$template->param("FORM_MQTT", 1);
-	my $mqttplugindata = LoxBerry::System::plugindata("mqttgateway");
-	$template->param("MQTTGATEWAY_INSTALLED", 1) if ( $mqttplugindata );
-	$template->param("MQTTGATEWAY_PLUGINDBFOLDER", $mqttplugindata->{PLUGINDB_FOLDER}) if ( $mqttplugindata );
+	my $lbversion = version->parse(vers_tag(LoxBerry::System::lbversion()));
+	$lbversion =~ s/^v(\d+)\..*/$1/r; # Major Version, e. g. "2"
+	$template->param("MQTTGATEWAY_LB2", 1) if($lbversion < 3);
 	return();
 }
 
@@ -302,31 +302,6 @@ sub savemqtt
 	my $mqttplugindata = LoxBerry::System::plugindata("mqttgateway");
 	my $cfg = $jsonobj->open(filename => $CFGFILE);
 	$cfg->{topic} = $q->{topic};
-	$cfg->{usemqttgateway} = $q->{usemqttgateway};
-	# Get MQTT Gateway credentials
-	if ( is_enabled($q->{usemqttgateway}) ) {
-		my $gwcred = $jsonobjcred->open(filename => $lbhomedir . "/config/plugins/" . $mqttplugindata->{PLUGINDB_FOLDER} . "/cred.json");
-		$q->{brokeruser} = $gwcred->{Credentials}->{brokeruser};
-		$q->{brokerpassword} = $gwcred->{Credentials}->{brokerpass};
-		my $gwcfg = $jsonobjcfg->open(filename => $lbhomedir . "/config/plugins/" . $mqttplugindata->{PLUGINDB_FOLDER} . "/mqtt.json");
-		if ( $gwcfg->{Main}->{brokeraddress} =~ /:/ ) {
-			my ($broker,$port) = split (/:/,$gwcfg->{Main}->{brokeraddress});
-			$q->{broker} = $broker;
-			$q->{brokerport} = $port;
-		} else {
-			$q->{broker} = $gwcfg->{Main}->{brokeraddress};
-			$q->{brokerport} = "1883";
-		};
-	};
-	$cfg->{broker} = $q->{broker};
-	$cfg->{brokerport} = $q->{brokerport};
-	$cfg->{brokeruser} = $q->{brokeruser};
-	$cfg->{brokerpassword} = $q->{brokerpassword};
-	if ( $q->{brokeruser} && $q->{brokerpassword} ) {
-		$cfg->{brokerauth} = "1";
-	} else {
-		$cfg->{brokerauth} = "0";
-	}
 	$jsonobj->write();
 	
 	# Save mqtt_subscriptions.cfg for MQTT Gateway

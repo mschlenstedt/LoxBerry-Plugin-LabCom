@@ -26,6 +26,7 @@ use warnings;
 
 use LoxBerry::System;
 use LoxBerry::Log;
+use LoxBerry::IO;
 use LoxBerry::JSON;
 use LWP::UserAgent;
 use Getopt::Long;
@@ -42,7 +43,7 @@ use experimental 'smartmatch';
 my $version = LoxBerry::System::pluginversion();
 
 # Globals
-my $url = "https://labcom.cloud/graphql";
+my $url = "https://backend.labcom.cloud/graphql";
 my $account;
 my $token;
 my $logfile;
@@ -156,7 +157,14 @@ my $mqtt;
 
 # Allow unencrypted connection with credentials
 $ENV{MQTT_SIMPLE_ALLOW_INSECURE_LOGIN} = 1;
-$cfg->{'brokerport'} = "1883" if !$cfg->{'brokerport'};
+#$cfg->{'brokerport'} = "1883" if !$cfg->{'brokerport'};
+
+# From LoxBerry 3.0 on, we have MQTT onboard
+my $mqttcred = LoxBerry::IO::mqtt_connectiondetails();
+$cfg->{'brokeruser'}  = $mqttcred->{brokeruser};
+$cfg->{'brokerpassword'} = $mqttcred->{brokerpass};
+$cfg->{'broker'} = $mqttcred->{brokerhost};
+$cfg->{'brokerport'} = $mqttcred->{brokerport};
 
 # Connect to MQTT Broker
 LOGDEB "Connecting to MQTT Broker...";

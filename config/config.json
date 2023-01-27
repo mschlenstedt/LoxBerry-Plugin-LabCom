@@ -1,10 +1,5 @@
 {
-   "broker" : "localhost",
-   "brokerpassword" : "",
-   "brokerport" : "1883",
-   "brokeruser" : "",
    "topic" : "labcom",
-   "usemqttgateway" : "false",
    "token" : "",
    "accountid" : "0"
 }
