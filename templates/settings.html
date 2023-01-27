@@ -409,34 +409,8 @@ function getconfig() {
 				if(data.topic) {
 					$("#MQTTTopic").val(data.topic);
 				} else {
-					$("#MQTTTopic").val('sc');
+					$("#MQTTTopic").val('labcom');
 				}
-				if(data.usemqttgateway === "true" || data.usemqttgateway === "1") {
-					$("#MQTTUseMQTTGateway").prop('checked', true).checkboxradio("refresh");
-				} else {
-					$("#MQTTUseMQTTGateway").prop('checked', false).checkboxradio("refresh");
-				}
-				if(data.broker) {
-					$("#BrokerServer").val(data.broker);
-				} else {
-					$("#BrokerServer").val('');
-				}
-				if(data.brokerport) {
-					$("#BrokerPort").val(data.brokerport);
-				} else {
-					$("#BrokerPort").val('');
-				}
-				if(data.brokeruser) {
-					$("#BrokerUsername").val(data.brokeruser);
-				} else {
-					$("#BrokerUsername").val('');
-				}
-				if(data.brokerpassword) {
-					$("#BrokerPassword").val(data.brokerpassword);
-				} else {
-					$("#BrokerPassword").val('');
-				}
-				refreshMQTTForm();
 			};
 
 			if ( formlabcom ) {
